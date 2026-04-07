@@ -89,6 +89,12 @@ def main() -> None:
     default=False,
     help="Run without connecting to TimescaleDB (serial-only / dry-run mode).",
 )
+@click.option(
+    "--source-id",
+    default="default",
+    show_default=True,
+    help="Label for this GPS source / entity (e.g. 'truck-1').",
+)
 @click.option("-v", "--verbose", is_flag=True, help="Enable debug logging.")
 def run(
     port: str,
@@ -103,6 +109,7 @@ def run(
     db_password: str,
     table: str,
     no_db: bool,
+    source_id: str,
     verbose: bool,
 ) -> None:
     """Start reading NMEA data and writing to TimescaleDB.
@@ -133,6 +140,7 @@ def run(
         )
         writer = GPSWriter(
             db_cfg,
+            source_id=source_id,
             on_reconnect=lambda attempt, info: click.echo(
                 f"  ⟳  DB reconnect attempt {attempt} → {info}"
             ),

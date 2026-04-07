@@ -27,14 +27,15 @@ _CREATE_EXTENSION_TIMESCALE = "CREATE EXTENSION IF NOT EXISTS timescaledb;"
 
 _CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
-    time         TIMESTAMPTZ      NOT NULL,
-    geom         GEOMETRY(Point, 4326),
-    latitude     DOUBLE PRECISION NOT NULL,
-    longitude    DOUBLE PRECISION NOT NULL,
-    speed_knots  DOUBLE PRECISION,
-    course       DOUBLE PRECISION,
-    status       CHAR(1),
-    raw_sentence TEXT
+    time         TIMESTAMPTZ      NOT NULL,  -- UTC timestamp of the fix
+    source_id    TEXT             NOT NULL,  -- User-defined entity / track label
+    geom         GEOMETRY(Point, 4326),      -- WGS 84 point (lon, lat) in decimal degrees
+    latitude     DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = North, negative = South
+    longitude    DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = East, negative = West
+    speed_knots  DOUBLE PRECISION,           -- Speed over ground in knots (1 kt = 1.852 km/h)
+    course       DOUBLE PRECISION,           -- Track angle in degrees true (0–360°)
+    status       CHAR(1),                    -- 'A' = active/valid fix, 'V' = void/invalid
+    raw_sentence TEXT                         -- Original NMEA sentence verbatim
 );
 """
 
@@ -43,8 +44,8 @@ SELECT create_hypertable('{table}', 'time', if_not_exists => TRUE);
 """
 
 _INSERT_FIX = """
-INSERT INTO {table} (time, geom, latitude, longitude, speed_knots, course, status, raw_sentence)
-VALUES (%s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s, %s, %s, %s, %s);
+INSERT INTO {table} (time, source_id, geom, latitude, longitude, speed_knots, course, status, raw_sentence)
+VALUES (%s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s, %s, %s, %s, %s);
 """
 
 # Default reconnection settings
@@ -71,6 +72,9 @@ class GPSWriter:
     ----------
     config : DatabaseConfig
         Connection settings.
+    source_id : str
+        Label for this GPS source / entity (e.g. ``'truck-1'``).
+        Stored in every row so multiple streams can share one table.
     auto_provision : bool
         If *True*, call :meth:`provision` automatically on the first write.
     max_retries : int
@@ -88,6 +92,7 @@ class GPSWriter:
         self,
         config: DatabaseConfig,
         *,
+        source_id: str = "default",
         auto_provision: bool = True,
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY,
@@ -95,6 +100,7 @@ class GPSWriter:
         on_reconnect: Optional[Callable[[int, str], None]] = None,
     ) -> None:
         self.config = config
+        self.source_id = source_id
         self._conn: Optional[psycopg2.extensions.connection] = None
         self._lock = threading.Lock()
         self._provisioned = False
@@ -235,6 +241,7 @@ class GPSWriter:
         table = self.config.table_name
         params = (
             fix.timestamp,
+            self.source_id,
             fix.longitude,  # ST_MakePoint(x, y) = (lon, lat)
             fix.latitude,
             fix.latitude,
@@ -268,6 +275,7 @@ class GPSWriter:
         rows = [
             (
                 f.timestamp,
+                self.source_id,
                 f.longitude,
                 f.latitude,
                 f.latitude,

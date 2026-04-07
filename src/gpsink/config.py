@@ -45,3 +45,4 @@ class AppConfig:
 
     serial: SerialConfig = field(default_factory=SerialConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
+    source_id: str = "default"  # identifies the GPS entity / track

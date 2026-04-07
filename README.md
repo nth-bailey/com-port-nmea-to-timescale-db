@@ -56,6 +56,7 @@ gpsink provision          Create extensions, table, and hypertable
 | `--db-user`    | `postgres`  | Database user            |
 | `--db-password`| `postgres`  | Database password        |
 | `--table`      | `gps_readings` | Target table name     |
+| `--source-id`  | `default`   | Label for this GPS source / entity (e.g. `truck-1`) |
 | `--no-db`      | off         | Skip database — serial-only / dry-run mode |
 | `-v`           | off         | Enable debug logging     |
 
@@ -71,17 +72,22 @@ Both the serial port reader and the database writer will automatically attempt t
 
 ```sql
 CREATE TABLE gps_readings (
-    time         TIMESTAMPTZ      NOT NULL,
-    geom         GEOMETRY(Point, 4326),
-    latitude     DOUBLE PRECISION NOT NULL,
-    longitude    DOUBLE PRECISION NOT NULL,
-    speed_knots  DOUBLE PRECISION,
-    course       DOUBLE PRECISION,
-    status       CHAR(1),
-    raw_sentence TEXT
+    time         TIMESTAMPTZ      NOT NULL,  -- UTC timestamp of the fix
+    source_id    TEXT             NOT NULL,  -- User-defined entity / track label
+    geom         GEOMETRY(Point, 4326),      -- WGS 84 point (lon, lat) in decimal degrees
+    latitude     DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = North, negative = South
+    longitude    DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = East, negative = West
+    speed_knots  DOUBLE PRECISION,           -- Speed over ground in knots (1 kt ≈ 1.852 km/h)
+    course       DOUBLE PRECISION,           -- Track angle in degrees true (0–360°)
+    status       CHAR(1),                    -- 'A' = active/valid fix, 'V' = void/invalid
+    raw_sentence TEXT                         -- Original NMEA sentence verbatim
 );
 -- Automatically converted to a TimescaleDB hypertable
 ```
+
+> **NMEA → DB conversion:** Raw RMC sentences encode position as `DDDMM.MMMM` with `N`/`S`/`E`/`W` indicators (e.g. `4807.038,N` = 48°07.038′ N). The parser ([pynmea2](https://github.com/Knio/pynmea2)) converts these to **signed decimal degrees** before insertion (e.g. `48.1173`, with South/West as negative). The `geom` column stores the same coordinates as a PostGIS `Point(longitude, latitude)` in SRID 4326 (WGS 84).
+
+> **Multi-entity tracking:** Use `--source-id` (CLI) or the Source ID field (GUI) to label each GPS stream. Run multiple gpsink instances against the same table with different source IDs to track separate vehicles, drones, etc. Query by `WHERE source_id = 'truck-1'`.
 
 ## Development
 

@@ -182,6 +182,23 @@ class GpsinkGUI:
         self._db_table_entry = ttk.Entry(row3, textvariable=self.table_var, width=16)
         self._db_table_entry.pack(side="left", padx=4)
 
+        row4 = ttk.Frame(db_frame)
+        row4.pack(fill="x", **pad)
+
+        ttk.Label(row4, text="Source ID:").pack(side="left")
+        self.source_id_var = tk.StringVar(value="default")
+        self._source_id_entry = ttk.Entry(
+            row4, textvariable=self.source_id_var, width=20
+        )
+        self._source_id_entry.pack(side="left", padx=4)
+
+        ttk.Label(
+            row4,
+            text="(label for this GPS entity, e.g. 'truck-1')",
+            foreground="#6c7086",
+            font=("Segoe UI", 8),
+        ).pack(side="left", padx=(8, 0))
+
         # Store refs so we can enable/disable them
         self._db_widgets = [
             self._db_host_entry,
@@ -190,6 +207,7 @@ class GpsinkGUI:
             self._db_user_entry,
             self._db_pass_entry,
             self._db_table_entry,
+            self._source_id_entry,
         ]
 
         # ---- Controls ----
@@ -278,6 +296,7 @@ class GpsinkGUI:
             try:
                 self._writer = GPSWriter(
                     db_cfg,
+                    source_id=self.source_id_var.get(),
                     on_reconnect=lambda attempt, info: self._log(
                         f"  ⟳  DB reconnect attempt {attempt} → {info}"
                     ),
