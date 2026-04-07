@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import threading
 import time
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -31,11 +30,12 @@ class TestSerialReader:
         if loop:
             # Cycle through lines forever (for continuous reading tests)
             import itertools
+
             it = itertools.cycle(lines)
         else:
             it = iter(lines + [b""] * 50)  # padding so readline doesn't hang
 
-        mock_serial.readline = MagicMock(side_effect=lambda: next(it))
+        mock_serial.readline = MagicMock(side_effect=lambda: next(it, b""))
         mock_serial.close = MagicMock()
         return mock_serial
 
@@ -71,6 +71,7 @@ class TestSerialReader:
     @patch("gpsink.serial_reader.serial.Serial")
     def test_reader_handles_serial_open_error(self, mock_serial_cls, config):
         import serial as _serial
+
         mock_serial_cls.side_effect = _serial.SerialException("Port not found")
 
         errors: list = []

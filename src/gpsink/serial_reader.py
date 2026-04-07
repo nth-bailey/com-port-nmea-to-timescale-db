@@ -57,7 +57,11 @@ class SerialReader:
             daemon=True,
         )
         self._thread.start()
-        log.info("Started serial reader on %s @ %d baud", self.config.port, self.config.baudrate)
+        log.info(
+            "Started serial reader on %s @ %d baud",
+            self.config.port,
+            self.config.baudrate,
+        )
 
     def stop(self, timeout: float = 5.0) -> None:
         """Signal the reader thread to stop and wait for it to finish."""

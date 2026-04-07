@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import logging
-import threading
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
-from typing import Optional
+from typing import Optional, Any
 
 from gpsink.config import DatabaseConfig, SerialConfig
 from gpsink.db import GPSWriter
@@ -33,15 +32,39 @@ class GpsinkGUI:
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TFrame", background="#1e1e2e")
-        style.configure("TLabel", background="#1e1e2e", foreground="#cdd6f4", font=("Segoe UI", 10))
-        style.configure("Header.TLabel", font=("Segoe UI", 12, "bold"), foreground="#89b4fa")
+        style.configure(
+            "TLabel", background="#1e1e2e", foreground="#cdd6f4", font=("Segoe UI", 10)
+        )
+        style.configure(
+            "Header.TLabel", font=("Segoe UI", 12, "bold"), foreground="#89b4fa"
+        )
         style.configure("TEntry", fieldbackground="#313244", foreground="#cdd6f4")
-        style.configure("TButton", background="#89b4fa", foreground="#1e1e2e", font=("Segoe UI", 10, "bold"))
-        style.configure("Stop.TButton", background="#f38ba8", foreground="#1e1e2e", font=("Segoe UI", 10, "bold"))
+        style.configure(
+            "TButton",
+            background="#89b4fa",
+            foreground="#1e1e2e",
+            font=("Segoe UI", 10, "bold"),
+        )
+        style.configure(
+            "Stop.TButton",
+            background="#f38ba8",
+            foreground="#1e1e2e",
+            font=("Segoe UI", 10, "bold"),
+        )
         style.configure("TCombobox", fieldbackground="#313244", foreground="#cdd6f4")
         style.configure("TLabelframe", background="#1e1e2e", foreground="#a6adc8")
-        style.configure("TLabelframe.Label", background="#1e1e2e", foreground="#a6adc8", font=("Segoe UI", 10, "bold"))
-        style.configure("Status.TLabel", background="#1e1e2e", foreground="#a6e3a1", font=("Segoe UI", 9))
+        style.configure(
+            "TLabelframe.Label",
+            background="#1e1e2e",
+            foreground="#a6adc8",
+            font=("Segoe UI", 10, "bold"),
+        )
+        style.configure(
+            "Status.TLabel",
+            background="#1e1e2e",
+            foreground="#a6e3a1",
+            font=("Segoe UI", 9),
+        )
 
         self._build_ui()
 
@@ -50,7 +73,7 @@ class GpsinkGUI:
     # ------------------------------------------------------------------
 
     def _build_ui(self) -> None:
-        pad = dict(padx=8, pady=4)
+        pad: dict[str, Any] = dict(padx=8, pady=4)
 
         # ---- Serial settings ----
         serial_frame = ttk.LabelFrame(self.root, text="  📡  Serial / COM Port  ")
@@ -65,24 +88,31 @@ class GpsinkGUI:
 
         ttk.Label(row, text="Baud:").pack(side="left", padx=(12, 0))
         self.baud_var = tk.StringVar(value="9600")
-        baud_cb = ttk.Combobox(row, textvariable=self.baud_var, width=8,
-                               values=["4800", "9600", "19200", "38400", "57600", "115200"])
+        baud_cb = ttk.Combobox(
+            row,
+            textvariable=self.baud_var,
+            width=8,
+            values=["4800", "9600", "19200", "38400", "57600", "115200"],
+        )
         baud_cb.pack(side="left", padx=4)
 
         ttk.Label(row, text="Data:").pack(side="left", padx=(12, 0))
         self.bytesize_var = tk.StringVar(value="8")
-        ttk.Combobox(row, textvariable=self.bytesize_var, width=3,
-                     values=["5", "6", "7", "8"]).pack(side="left", padx=4)
+        ttk.Combobox(
+            row, textvariable=self.bytesize_var, width=3, values=["5", "6", "7", "8"]
+        ).pack(side="left", padx=4)
 
         ttk.Label(row, text="Parity:").pack(side="left", padx=(12, 0))
         self.parity_var = tk.StringVar(value="N")
-        ttk.Combobox(row, textvariable=self.parity_var, width=3,
-                     values=["N", "E", "O", "M", "S"]).pack(side="left", padx=4)
+        ttk.Combobox(
+            row, textvariable=self.parity_var, width=3, values=["N", "E", "O", "M", "S"]
+        ).pack(side="left", padx=4)
 
         ttk.Label(row, text="Stop:").pack(side="left", padx=(12, 0))
         self.stopbits_var = tk.StringVar(value="1")
-        ttk.Combobox(row, textvariable=self.stopbits_var, width=4,
-                     values=["1", "1.5", "2"]).pack(side="left", padx=4)
+        ttk.Combobox(
+            row, textvariable=self.stopbits_var, width=4, values=["1", "1.5", "2"]
+        ).pack(side="left", padx=4)
 
         # ---- Database settings ----
         db_frame = ttk.LabelFrame(self.root, text="  🗄️  TimescaleDB  ")
@@ -93,26 +123,36 @@ class GpsinkGUI:
 
         ttk.Label(row2, text="Host:").pack(side="left")
         self.db_host_var = tk.StringVar(value="localhost")
-        ttk.Entry(row2, textvariable=self.db_host_var, width=16).pack(side="left", padx=4)
+        ttk.Entry(row2, textvariable=self.db_host_var, width=16).pack(
+            side="left", padx=4
+        )
 
         ttk.Label(row2, text="Port:").pack(side="left", padx=(12, 0))
         self.db_port_var = tk.StringVar(value="5432")
-        ttk.Entry(row2, textvariable=self.db_port_var, width=6).pack(side="left", padx=4)
+        ttk.Entry(row2, textvariable=self.db_port_var, width=6).pack(
+            side="left", padx=4
+        )
 
         ttk.Label(row2, text="DB:").pack(side="left", padx=(12, 0))
         self.db_name_var = tk.StringVar(value="gpsink")
-        ttk.Entry(row2, textvariable=self.db_name_var, width=12).pack(side="left", padx=4)
+        ttk.Entry(row2, textvariable=self.db_name_var, width=12).pack(
+            side="left", padx=4
+        )
 
         row3 = ttk.Frame(db_frame)
         row3.pack(fill="x", **pad)
 
         ttk.Label(row3, text="User:").pack(side="left")
         self.db_user_var = tk.StringVar(value="postgres")
-        ttk.Entry(row3, textvariable=self.db_user_var, width=12).pack(side="left", padx=4)
+        ttk.Entry(row3, textvariable=self.db_user_var, width=12).pack(
+            side="left", padx=4
+        )
 
         ttk.Label(row3, text="Password:").pack(side="left", padx=(12, 0))
         self.db_pass_var = tk.StringVar(value="postgres")
-        ttk.Entry(row3, textvariable=self.db_pass_var, width=14, show="•").pack(side="left", padx=4)
+        ttk.Entry(row3, textvariable=self.db_pass_var, width=14, show="•").pack(
+            side="left", padx=4
+        )
 
         ttk.Label(row3, text="Table:").pack(side="left", padx=(12, 0))
         self.table_var = tk.StringVar(value="gps_readings")
@@ -125,15 +165,21 @@ class GpsinkGUI:
         self.start_btn = ttk.Button(ctrl_frame, text="▶  Start", command=self._on_start)
         self.start_btn.pack(side="left", padx=4)
 
-        self.stop_btn = ttk.Button(ctrl_frame, text="■  Stop", command=self._on_stop, style="Stop.TButton")
+        self.stop_btn = ttk.Button(
+            ctrl_frame, text="■  Stop", command=self._on_stop, style="Stop.TButton"
+        )
         self.stop_btn.pack(side="left", padx=4)
         self.stop_btn.state(["disabled"])
 
         self.status_var = tk.StringVar(value="Idle")
-        ttk.Label(ctrl_frame, textvariable=self.status_var, style="Status.TLabel").pack(side="right", padx=8)
+        ttk.Label(ctrl_frame, textvariable=self.status_var, style="Status.TLabel").pack(
+            side="right", padx=8
+        )
 
         self.count_var = tk.StringVar(value="Fixes: 0")
-        ttk.Label(ctrl_frame, textvariable=self.count_var, style="Status.TLabel").pack(side="right", padx=8)
+        ttk.Label(ctrl_frame, textvariable=self.count_var, style="Status.TLabel").pack(
+            side="right", padx=8
+        )
 
         # ---- Log area ----
         log_frame = ttk.LabelFrame(self.root, text="  📜  Live Feed  ")
@@ -159,11 +205,13 @@ class GpsinkGUI:
 
     def _log(self, text: str) -> None:
         """Append a line to the log widget (thread-safe via `after`)."""
+
         def _append():
             self.log_text.configure(state="normal")
             self.log_text.insert("end", text + "\n")
             self.log_text.see("end")
             self.log_text.configure(state="disabled")
+
         self.root.after(0, _append)
 
     def _on_start(self) -> None:
@@ -193,6 +241,8 @@ class GpsinkGUI:
         self._fix_count = 0
 
         def on_fix(fix: GPSFix) -> None:
+            if self._writer is None:
+                return
             self._fix_count += 1
             self.root.after(0, lambda: self.count_var.set(f"Fixes: {self._fix_count}"))
             self._writer.write_fix(fix)
@@ -213,8 +263,10 @@ class GpsinkGUI:
         self.status_var.set(f"Streaming {serial_cfg.port}")
         self.start_btn.state(["disabled"])
         self.stop_btn.state(["!disabled"])
-        self._log(f"Started — {serial_cfg.port} @ {serial_cfg.baudrate} → "
-                  f"{db_cfg.host}:{db_cfg.port}/{db_cfg.dbname}")
+        self._log(
+            f"Started — {serial_cfg.port} @ {serial_cfg.baudrate} → "
+            f"{db_cfg.host}:{db_cfg.port}/{db_cfg.dbname}"
+        )
 
     def _on_stop(self) -> None:
         if self._reader:

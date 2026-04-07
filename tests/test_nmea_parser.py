@@ -30,29 +30,35 @@ class TestParseGprmc:
 
     def test_valid_fix_has_correct_timestamp(self):
         fix = parse_gprmc(VALID_GPRMC)
+        assert fix is not None
         # 23-Mar-1994, 12:35:19 UTC
         assert fix.timestamp == datetime(1994, 3, 23, 12, 35, 19, tzinfo=timezone.utc)
 
     def test_valid_fix_latitude(self):
         fix = parse_gprmc(VALID_GPRMC)
+        assert fix is not None
         # 48°07.038'N → ≈ 48.1173°
         assert fix.latitude == pytest.approx(48.1173, abs=0.001)
 
     def test_valid_fix_longitude(self):
         fix = parse_gprmc(VALID_GPRMC)
+        assert fix is not None
         # 011°31.000'E → ≈ 11.5167°
         assert fix.longitude == pytest.approx(11.5167, abs=0.001)
 
     def test_valid_fix_speed(self):
         fix = parse_gprmc(VALID_GPRMC)
+        assert fix is not None
         assert fix.speed_knots == pytest.approx(22.4)
 
     def test_valid_fix_course(self):
         fix = parse_gprmc(VALID_GPRMC)
+        assert fix is not None
         assert fix.course == pytest.approx(84.4)
 
     def test_valid_fix_status_is_active(self):
         fix = parse_gprmc(VALID_GPRMC)
+        assert fix is not None
         assert fix.status == "A"
         assert fix.is_valid is True
 
@@ -76,6 +82,7 @@ class TestParseGprmc:
 
     def test_raw_field_preserved(self):
         fix = parse_gprmc(VALID_GPRMC)
+        assert fix is not None
         assert fix.raw == VALID_GPRMC
 
 

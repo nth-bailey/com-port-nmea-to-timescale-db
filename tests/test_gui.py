@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import patch, MagicMock
 
-import pytest
-
 
 class TestGUIConstruction:
     """Verify the GUI can be instantiated without a display by mocking Tk."""
@@ -19,6 +17,7 @@ class TestGUIConstruction:
         mock_tk.StringVar.return_value = MagicMock()
 
         from gpsink.gui import GpsinkGUI
+
         gui = GpsinkGUI()
 
         mock_root.title.assert_called_once()
@@ -33,6 +32,7 @@ class TestGUIConstruction:
         mock_tk.StringVar.return_value = MagicMock()
 
         from gpsink.gui import GpsinkGUI
+
         gui = GpsinkGUI()
 
         mock_root.title.assert_called_with("gpsink — GPS → TimescaleDB")
@@ -46,6 +46,7 @@ class TestGUIConstruction:
         mock_tk.StringVar.return_value = MagicMock()
 
         from gpsink.gui import GpsinkGUI
+
         gui = GpsinkGUI()
 
         mock_root.protocol.assert_called_with("WM_DELETE_WINDOW", gui._on_close)
@@ -59,6 +60,7 @@ class TestGUIConstruction:
         mock_tk.StringVar.return_value = MagicMock()
 
         from gpsink.gui import GpsinkGUI
+
         gui = GpsinkGUI()
 
         mock_root.configure.assert_called_with(bg="#1e1e2e")

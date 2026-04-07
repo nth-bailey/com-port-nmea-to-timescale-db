@@ -54,13 +54,20 @@ class TestCLI:
             mock_event.wait.return_value = None  # returns immediately
             mock_event_cls.return_value = mock_event
 
-            result = runner.invoke(main, [
-                "run",
-                "--port", "COM99",
-                "--baud", "9600",
-                "--db-host", "localhost",
-                "--db-name", "testdb",
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--port",
+                    "COM99",
+                    "--baud",
+                    "9600",
+                    "--db-host",
+                    "localhost",
+                    "--db-name",
+                    "testdb",
+                ],
+            )
 
         # Writer should have been connected and closed
         mock_writer.connect.assert_called_once()
@@ -75,11 +82,16 @@ class TestCLI:
         mock_writer = MagicMock()
         mock_writer_cls.return_value = mock_writer
 
-        result = runner.invoke(main, [
-            "provision",
-            "--db-host", "localhost",
-            "--db-name", "testdb",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "provision",
+                "--db-host",
+                "localhost",
+                "--db-name",
+                "testdb",
+            ],
+        )
 
         assert result.exit_code == 0
         mock_writer.connect.assert_called_once()

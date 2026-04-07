@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from typing import Optional
 
 import psycopg2
+import psycopg2.extensions
 import psycopg2.extras
 
 from gpsink.config import DatabaseConfig
@@ -82,8 +83,12 @@ class GPSWriter:
                 return
             self._conn = psycopg2.connect(self.config.dsn)
             self._conn.autocommit = True
-            log.info("Connected to TimescaleDB at %s:%s/%s",
-                     self.config.host, self.config.port, self.config.dbname)
+            log.info(
+                "Connected to TimescaleDB at %s:%s/%s",
+                self.config.host,
+                self.config.port,
+                self.config.dbname,
+            )
 
     def close(self) -> None:
         """Close the database connection."""
@@ -97,6 +102,8 @@ class GPSWriter:
         """Yield a cursor, reconnecting if necessary."""
         if self._conn is None or self._conn.closed:
             self.connect()
+
+        assert self._conn is not None
         with self._conn.cursor() as cur:
             yield cur
 
@@ -138,7 +145,7 @@ class GPSWriter:
                     _INSERT_FIX.format(table=table),
                     (
                         fix.timestamp,
-                        fix.longitude,   # ST_MakePoint(x, y) = (lon, lat)
+                        fix.longitude,  # ST_MakePoint(x, y) = (lon, lat)
                         fix.latitude,
                         fix.latitude,
                         fix.longitude,
