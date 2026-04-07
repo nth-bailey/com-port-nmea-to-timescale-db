@@ -55,7 +55,7 @@ gpsink provision          Create extensions, table, and hypertable
 
 ## GUI Reference
 
-![alt text](image.png)
+![alt text](gui.png)
 
 ## Database Schema
 
