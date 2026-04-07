@@ -15,13 +15,6 @@ dependencies = [
     "click>=8.1",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "pytest-mock>=3.10",
-]
-
 [project.scripts]
 gpsink = "gpsink.cli:main"
 
@@ -32,3 +25,12 @@ packages = ["src/gpsink"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.10",
+    "ruff>=0.15.9",
+    "ty>=0.0.29",
+]

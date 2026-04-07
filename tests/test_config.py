@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from gpsink.config import AppConfig, DatabaseConfig, SerialConfig
 
@@ -32,9 +31,17 @@ class TestDatabaseConfig:
         assert cfg.dbname == "gpsink"
 
     def test_dsn(self):
-        cfg = DatabaseConfig(host="db.example.com", port=5433, dbname="mydb",
-                             user="admin", password="secret")
-        assert cfg.dsn == "host=db.example.com port=5433 dbname=mydb user=admin password=secret"
+        cfg = DatabaseConfig(
+            host="db.example.com",
+            port=5433,
+            dbname="mydb",
+            user="admin",
+            password="secret",
+        )
+        assert (
+            cfg.dsn
+            == "host=db.example.com port=5433 dbname=mydb user=admin password=secret"
+        )
 
     def test_table_name_default(self):
         cfg = DatabaseConfig()

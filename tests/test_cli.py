@@ -28,6 +28,7 @@ class TestCLI:
         assert "--port" in result.output
         assert "--baud" in result.output
         assert "--db-host" in result.output
+        assert "--no-db" in result.output
 
     def test_provision_help(self, runner):
         result = runner.invoke(main, ["provision", "--help"])
@@ -54,13 +55,20 @@ class TestCLI:
             mock_event.wait.return_value = None  # returns immediately
             mock_event_cls.return_value = mock_event
 
-            result = runner.invoke(main, [
-                "run",
-                "--port", "COM99",
-                "--baud", "9600",
-                "--db-host", "localhost",
-                "--db-name", "testdb",
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--port",
+                    "COM99",
+                    "--baud",
+                    "9600",
+                    "--db-host",
+                    "localhost",
+                    "--db-name",
+                    "testdb",
+                ],
+            )
 
         # Writer should have been connected and closed
         mock_writer.connect.assert_called_once()
@@ -70,16 +78,65 @@ class TestCLI:
         mock_reader.start.assert_called_once()
         mock_reader.stop.assert_called_once()
 
+    @patch("gpsink.cli.SerialReader")
+    def test_run_no_db_skips_database(self, mock_reader_cls, runner):
+        """--no-db should skip all database operations."""
+        mock_reader = MagicMock()
+        mock_reader_cls.return_value = mock_reader
+
+        with patch("gpsink.cli.threading.Event") as mock_event_cls:
+            mock_event = MagicMock()
+            mock_event.wait.return_value = None
+            mock_event_cls.return_value = mock_event
+
+            result = runner.invoke(
+                main,
+                ["run", "--port", "COM99", "--no-db"],
+            )
+
+        assert result.exit_code == 0
+        assert "serial-only" in result.output.lower()
+        # Reader should still start and stop
+        mock_reader.start.assert_called_once()
+        mock_reader.stop.assert_called_once()
+
+    @patch("gpsink.cli.GPSWriter")
+    @patch("gpsink.cli.SerialReader")
+    def test_run_no_db_does_not_create_writer(
+        self, mock_reader_cls, mock_writer_cls, runner
+    ):
+        """When --no-db is used, GPSWriter should never be instantiated."""
+        mock_reader = MagicMock()
+        mock_reader_cls.return_value = mock_reader
+
+        with patch("gpsink.cli.threading.Event") as mock_event_cls:
+            mock_event = MagicMock()
+            mock_event.wait.return_value = None
+            mock_event_cls.return_value = mock_event
+
+            result = runner.invoke(
+                main,
+                ["run", "--port", "COM99", "--no-db"],
+            )
+
+        assert result.exit_code == 0
+        mock_writer_cls.assert_not_called()
+
     @patch("gpsink.cli.GPSWriter")
     def test_provision_command(self, mock_writer_cls, runner):
         mock_writer = MagicMock()
         mock_writer_cls.return_value = mock_writer
 
-        result = runner.invoke(main, [
-            "provision",
-            "--db-host", "localhost",
-            "--db-name", "testdb",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "provision",
+                "--db-host",
+                "localhost",
+                "--db-name",
+                "testdb",
+            ],
+        )
 
         assert result.exit_code == 0
         mock_writer.connect.assert_called_once()

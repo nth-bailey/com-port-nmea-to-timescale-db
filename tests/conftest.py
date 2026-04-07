@@ -12,19 +12,13 @@ from gpsink.nmea_parser import GPSFix
 # ---------------------------------------------------------------------------
 
 # A well-formed, valid-fix GPRMC sentence (status = A)
-VALID_GPRMC = (
-    "$GPRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*44"
-)
+VALID_GPRMC = "$GPRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*44"
 
 # A void-fix GPRMC sentence (status = V)
-VOID_GPRMC = (
-    "$GPRMC,123519.00,V,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*53"
-)
+VOID_GPRMC = "$GPRMC,123519.00,V,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*53"
 
 # Non-RMC sentence (GPGGA)
-GPGGA_SENTENCE = (
-    "$GPGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*61"
-)
+GPGGA_SENTENCE = "$GPGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*61"
 
 # Garbage / malformed
 GARBAGE = "!!!NOT_NMEA!!!"

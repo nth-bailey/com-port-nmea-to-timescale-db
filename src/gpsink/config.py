@@ -11,10 +11,10 @@ class SerialConfig:
 
     port: str = "COM3"
     baudrate: int = 9600
-    bytesize: int = 8        # 5, 6, 7, or 8
-    parity: str = "N"        # N, E, O, M, S
-    stopbits: float = 1      # 1, 1.5, 2
-    timeout: float = 2.0     # read timeout in seconds
+    bytesize: int = 8  # 5, 6, 7, or 8
+    parity: str = "N"  # N, E, O, M, S
+    stopbits: float = 1  # 1, 1.5, 2
+    timeout: float = 2.0  # read timeout in seconds
     rtscts: bool = False
     xonxoff: bool = False
 
