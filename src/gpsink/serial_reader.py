@@ -10,7 +10,7 @@ from typing import Callable, Optional
 import serial
 
 from gpsink.config import SerialConfig
-from gpsink.nmea_parser import GPSFix, parse_gprmc
+from gpsink.nmea_parser import GPSFix, parse_rmc
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class SerialReader:
     config : SerialConfig
         Serial port settings.
     on_fix : callable(GPSFix) -> None
-        Callback invoked on the reader thread for every parsed GPRMC fix.
+        Callback invoked on the reader thread for every parsed RMC fix.
     on_error : callable(Exception) -> None, optional
         Callback invoked when the serial port raises an unrecoverable error
         (i.e. all retries exhausted).
@@ -205,7 +205,7 @@ class SerialReader:
                 if not line:
                     continue
 
-                fix = parse_gprmc(line)
+                fix = parse_rmc(line)
                 if fix is not None:
                     try:
                         self.on_fix(fix)

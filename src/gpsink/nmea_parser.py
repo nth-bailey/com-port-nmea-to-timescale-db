@@ -1,4 +1,4 @@
-"""Parse NMEA 0183 sentences — specifically $GPRMC — into structured data."""
+"""Parse NMEA 0183 RMC sentences (any talker: $GPRMC, $GNRMC, $GLRMC, …)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class GPSFix:
-    """A single parsed GPS fix from a GPRMC sentence.
+    """A single parsed GPS fix from an RMC sentence.
 
     Attributes
     ----------
@@ -58,18 +58,20 @@ class GPSFix:
         return self.speed_knots * 1.15078
 
 
-def parse_gprmc(sentence: str) -> Optional[GPSFix]:
-    """Parse a single NMEA sentence and return a `GPSFix` if it is $GPRMC.
+def parse_rmc(sentence: str) -> Optional[GPSFix]:
+    """Parse a single NMEA RMC sentence into a `GPSFix`.
+
+    Accepts any talker ID — ``$GPRMC``, ``$GNRMC``, ``$GLRMC``, etc.
 
     Parameters
     ----------
     sentence : str
-        A full NMEA sentence, e.g. ``$GPRMC,123519,...*47``.
+        A full NMEA sentence, e.g. ``$GNRMC,123519,...*47``.
 
     Returns
     -------
     GPSFix | None
-        Parsed fix, or *None* if the sentence is not GPRMC or is malformed.
+        Parsed fix, or *None* if the sentence is not RMC or is malformed.
     """
     sentence = sentence.strip()
     if not sentence:
@@ -88,7 +90,7 @@ def parse_gprmc(sentence: str) -> Optional[GPSFix]:
     try:
         dt = datetime.combine(msg.datestamp, msg.timestamp, tzinfo=timezone.utc)
     except (TypeError, AttributeError):
-        log.warning("Missing date/time in GPRMC sentence: %r", sentence)
+        log.warning("Missing date/time in RMC sentence: %r", sentence)
         return None
 
     course = msg.true_course if msg.true_course else None
@@ -111,7 +113,7 @@ def parse_gprmc(sentence: str) -> Optional[GPSFix]:
 
 
 def parse_nmea_stream(lines: list[str]) -> list[GPSFix]:
-    """Parse many NMEA lines, keeping only valid GPRMC fixes.
+    """Parse many NMEA lines, keeping only valid RMC fixes.
 
     Parameters
     ----------
@@ -125,7 +127,11 @@ def parse_nmea_stream(lines: list[str]) -> list[GPSFix]:
     """
     fixes: list[GPSFix] = []
     for line in lines:
-        fix = parse_gprmc(line)
+        fix = parse_rmc(line)
         if fix is not None:
             fixes.append(fix)
     return fixes
+
+
+# Backward-compatible alias
+parse_gprmc = parse_rmc

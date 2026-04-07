@@ -12,16 +12,16 @@ def calculate_checksum(sentence):
     return f"{checksum:02X}"
 
 
-def format_gprmc(lat, lon, lat_dir, lon_dir):
-    """Format a basic GPRMC sentence."""
+def format_gnrmc(lat, lon, lat_dir, lon_dir):
+    """Format a basic GNRMC sentence."""
     now = datetime.datetime.now(datetime.timezone.utc)
     time_str = now.strftime("%H%M%S.00")
     date_str = now.strftime("%d%m%y")
 
     # speed and course arbitrarily set to 0.0
-    # format: $GPRMC,TIME,A,LAT,LAT_DIR,LON,LON_DIR,SPD,CRS,DATE,,,A*CS
+    # format: $GNRMC,TIME,A,LAT,LAT_DIR,LON,LON_DIR,SPD,CRS,DATE,,,A*CS
     core_sentence = (
-        f"GPRMC,{time_str},A,{lat},{lat_dir},{lon},{lon_dir},0.0,0.0,{date_str},,,A"
+        f"GNRMC,{time_str},A,{lat},{lat_dir},{lon},{lon_dir},0.0,0.0,{date_str},,,A"
     )
     checksum = calculate_checksum(core_sentence)
     return f"${core_sentence}*{checksum}\r\n"
@@ -71,7 +71,7 @@ def main():
     try:
         while True:
             lat, lat_dir, lon, lon_dir = POINTS[point_idx]
-            sentence = format_gprmc(lat, lon, lat_dir, lon_dir)
+            sentence = format_gnrmc(lat, lon, lat_dir, lon_dir)
 
             # Write to serial port
             ser.write(sentence.encode("ascii"))

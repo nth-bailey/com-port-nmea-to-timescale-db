@@ -12,6 +12,7 @@ from gpsink.serial_reader import SerialReader
 
 # Sample sentences
 VALID_GPRMC = "$GPRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*44"
+VALID_GNRMC = "$GNRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*5A"
 GPGGA_SENTENCE = "$GPGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*61"
 
 
@@ -42,6 +43,22 @@ class TestSerialReader:
     @patch("gpsink.serial_reader.serial.Serial")
     def test_reader_delivers_fix_via_callback(self, mock_serial_cls, config):
         raw = (VALID_GPRMC + "\r\n").encode("ascii")
+        mock_port = self._make_mock_serial([raw])
+        mock_serial_cls.return_value = mock_port
+
+        received: list = []
+        reader = SerialReader(config, on_fix=lambda f: received.append(f))
+        reader.start()
+        time.sleep(0.3)
+        reader.stop()
+
+        assert len(received) >= 1
+        assert received[0].latitude == pytest.approx(48.1173, abs=0.01)
+
+    @patch("gpsink.serial_reader.serial.Serial")
+    def test_reader_delivers_gnrmc_fix(self, mock_serial_cls, config):
+        """$GNRMC sentences are parsed and delivered like $GPRMC."""
+        raw = (VALID_GNRMC + "\r\n").encode("ascii")
         mock_port = self._make_mock_serial([raw])
         mock_serial_cls.return_value = mock_port
 

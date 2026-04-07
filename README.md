@@ -2,12 +2,12 @@
 
 Stream NMEA GPS data from a COM port radio dongle into [TimescaleDB](https://www.timescale.com/) with [PostGIS](https://postgis.net/).
 
-Built for ≥1 Hz radio GPS data sources transmitting `$GPRMC` sentences.
+Built for ≥1 Hz radio GPS data sources transmitting RMC sentences (`$GNRMC`, `$GPRMC`, `$GLRMC`, …).
 
 ## Features
 
 - **Serial / COM port reader** — configurable baud rate, parity, stop bits, flow control
-- **NMEA parser** — extracts lat/lon/speed/course from `$GPRMC` sentences via `pynmea2`
+- **NMEA parser** — extracts lat/lon/speed/course from any `$xxRMC` sentence (e.g. `$GNRMC`) via `pynmea2`
 - **TimescaleDB writer** — auto-provisions a hypertable with a PostGIS `geometry(Point, 4326)` column
 - **Optional database** — run in serial-only mode (`--no-db`) to verify COM port connectivity before involving the DB
 - **Auto-reconnect** — both serial port and database connections automatically retry with exponential backoff on transient failures (e.g. USB hiccup, network outage)
@@ -102,7 +102,7 @@ uv run pytest --cov=gpsink --cov-report=term-missing
 ├── src/gpsink/
 │   ├── __init__.py        # Package version
 │   ├── config.py          # Dataclass configs for serial & DB
-│   ├── nmea_parser.py     # GPRMC sentence parser → GPSFix
+│   ├── nmea_parser.py     # RMC sentence parser → GPSFix
 │   ├── serial_reader.py   # Threaded COM port reader
 │   ├── db.py              # TimescaleDB/PostGIS writer
 │   ├── cli.py             # Click CLI (run / gui / provision)

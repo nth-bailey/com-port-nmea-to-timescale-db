@@ -6,11 +6,13 @@ from datetime import datetime, timezone
 
 import pytest
 
-from gpsink.nmea_parser import GPSFix, parse_gprmc, parse_nmea_stream
+from gpsink.nmea_parser import GPSFix, parse_rmc, parse_gprmc, parse_nmea_stream
 
 # Sample NMEA sentences (duplicated from conftest for direct import)
 VALID_GPRMC = "$GPRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*44"
 VOID_GPRMC = "$GPRMC,123519.00,V,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*53"
+VALID_GNRMC = "$GNRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*5A"
+VOID_GNRMC = "$GNRMC,123519.00,V,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*4D"
 GPGGA_SENTENCE = "$GPGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*61"
 GARBAGE = "!!!NOT_NMEA!!!"
 
@@ -20,70 +22,92 @@ GARBAGE = "!!!NOT_NMEA!!!"
 # ------------------------------------------------------------------
 
 
-class TestParseGprmc:
-    """Unit tests for the single-sentence parser."""
+class TestParseRmc:
+    """Unit tests for the single-sentence RMC parser."""
 
     def test_valid_gprmc_returns_fix(self):
-        fix = parse_gprmc(VALID_GPRMC)
+        fix = parse_rmc(VALID_GPRMC)
+        assert fix is not None
+        assert isinstance(fix, GPSFix)
+
+    def test_valid_gnrmc_returns_fix(self):
+        fix = parse_rmc(VALID_GNRMC)
         assert fix is not None
         assert isinstance(fix, GPSFix)
 
     def test_valid_fix_has_correct_timestamp(self):
-        fix = parse_gprmc(VALID_GPRMC)
+        fix = parse_rmc(VALID_GPRMC)
         assert fix is not None
         # 23-Mar-1994, 12:35:19 UTC
         assert fix.timestamp == datetime(1994, 3, 23, 12, 35, 19, tzinfo=timezone.utc)
 
+    def test_gnrmc_has_correct_timestamp(self):
+        fix = parse_rmc(VALID_GNRMC)
+        assert fix is not None
+        assert fix.timestamp == datetime(1994, 3, 23, 12, 35, 19, tzinfo=timezone.utc)
+
     def test_valid_fix_latitude(self):
-        fix = parse_gprmc(VALID_GPRMC)
+        fix = parse_rmc(VALID_GPRMC)
         assert fix is not None
         # 48°07.038'N → ≈ 48.1173°
         assert fix.latitude == pytest.approx(48.1173, abs=0.001)
 
     def test_valid_fix_longitude(self):
-        fix = parse_gprmc(VALID_GPRMC)
+        fix = parse_rmc(VALID_GPRMC)
         assert fix is not None
         # 011°31.000'E → ≈ 11.5167°
         assert fix.longitude == pytest.approx(11.5167, abs=0.001)
 
     def test_valid_fix_speed(self):
-        fix = parse_gprmc(VALID_GPRMC)
+        fix = parse_rmc(VALID_GPRMC)
         assert fix is not None
         assert fix.speed_knots == pytest.approx(22.4)
 
     def test_valid_fix_course(self):
-        fix = parse_gprmc(VALID_GPRMC)
+        fix = parse_rmc(VALID_GPRMC)
         assert fix is not None
         assert fix.course == pytest.approx(84.4)
 
     def test_valid_fix_status_is_active(self):
-        fix = parse_gprmc(VALID_GPRMC)
+        fix = parse_rmc(VALID_GPRMC)
         assert fix is not None
         assert fix.status == "A"
         assert fix.is_valid is True
 
     def test_void_fix_status(self):
-        fix = parse_gprmc(VOID_GPRMC)
+        fix = parse_rmc(VOID_GPRMC)
+        assert fix is not None
+        assert fix.status == "V"
+        assert fix.is_valid is False
+
+    def test_void_gnrmc_status(self):
+        fix = parse_rmc(VOID_GNRMC)
         assert fix is not None
         assert fix.status == "V"
         assert fix.is_valid is False
 
     def test_non_rmc_returns_none(self):
-        assert parse_gprmc(GPGGA_SENTENCE) is None
+        assert parse_rmc(GPGGA_SENTENCE) is None
 
     def test_garbage_returns_none(self):
-        assert parse_gprmc(GARBAGE) is None
+        assert parse_rmc(GARBAGE) is None
 
     def test_empty_string_returns_none(self):
-        assert parse_gprmc("") is None
+        assert parse_rmc("") is None
 
     def test_whitespace_only_returns_none(self):
-        assert parse_gprmc("   \n\t  ") is None
+        assert parse_rmc("   \n\t  ") is None
 
     def test_raw_field_preserved(self):
-        fix = parse_gprmc(VALID_GPRMC)
+        fix = parse_rmc(VALID_GPRMC)
         assert fix is not None
         assert fix.raw == VALID_GPRMC
+
+    def test_backward_compat_alias(self):
+        """parse_gprmc still works as an alias for parse_rmc."""
+        fix = parse_gprmc(VALID_GPRMC)
+        assert fix is not None
+        assert isinstance(fix, GPSFix)
 
 
 # ------------------------------------------------------------------
@@ -109,10 +133,15 @@ class TestGPSFixProperties:
 class TestParseNmeaStream:
     """Tests for batch parsing multiple lines."""
 
-    def test_filters_only_gprmc(self):
+    def test_filters_only_rmc(self):
         lines = [VALID_GPRMC, GPGGA_SENTENCE, VOID_GPRMC, GARBAGE]
         fixes = parse_nmea_stream(lines)
         assert len(fixes) == 2  # valid + void
+
+    def test_filters_mixed_talkers(self):
+        lines = [VALID_GPRMC, VALID_GNRMC, GPGGA_SENTENCE]
+        fixes = parse_nmea_stream(lines)
+        assert len(fixes) == 2  # both RMC sentences kept
 
     def test_empty_list(self):
         assert parse_nmea_stream([]) == []
