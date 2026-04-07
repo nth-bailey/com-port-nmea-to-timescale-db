@@ -83,6 +83,12 @@ def main() -> None:
 @click.option(
     "--table", default="gps_readings", show_default=True, help="Target table name."
 )
+@click.option(
+    "--no-db",
+    is_flag=True,
+    default=False,
+    help="Run without connecting to TimescaleDB (serial-only / dry-run mode).",
+)
 @click.option("-v", "--verbose", is_flag=True, help="Enable debug logging.")
 def run(
     port: str,
@@ -96,9 +102,14 @@ def run(
     db_user: str,
     db_password: str,
     table: str,
+    no_db: bool,
     verbose: bool,
 ) -> None:
-    """Start reading NMEA data and writing to TimescaleDB."""
+    """Start reading NMEA data and writing to TimescaleDB.
+
+    Use --no-db to skip the database entirely and just verify the serial
+    connection is healthy.
+    """
     _setup_logging(verbose)
 
     serial_cfg = SerialConfig(
@@ -108,24 +119,33 @@ def run(
         parity=parity,
         stopbits=float(stopbits),
     )
-    db_cfg = DatabaseConfig(
-        host=db_host,
-        port=db_port,
-        dbname=db_name,
-        user=db_user,
-        password=db_password,
-        table_name=table,
-    )
 
-    writer = GPSWriter(db_cfg)
-    writer.connect()
+    # ---- database (optional) -----------------------------------------
+    writer = None
+    if not no_db:
+        db_cfg = DatabaseConfig(
+            host=db_host,
+            port=db_port,
+            dbname=db_name,
+            user=db_user,
+            password=db_password,
+            table_name=table,
+        )
+        writer = GPSWriter(
+            db_cfg,
+            on_reconnect=lambda attempt, info: click.echo(
+                f"  ⟳  DB reconnect attempt {attempt} → {info}"
+            ),
+        )
+        writer.connect()
 
     fix_count = 0
     count_lock = threading.Lock()
 
     def on_fix(fix: GPSFix) -> None:
         nonlocal fix_count
-        writer.write_fix(fix)
+        if writer is not None:
+            writer.write_fix(fix)
         with count_lock:
             fix_count += 1
         click.echo(
@@ -138,7 +158,15 @@ def run(
     def on_error(exc: Exception) -> None:
         click.secho(f"Serial error: {exc}", fg="red", err=True)
 
-    reader = SerialReader(serial_cfg, on_fix=on_fix, on_error=on_error)
+    def on_serial_reconnect(attempt: int, port_name: str) -> None:
+        click.echo(f"  ⟳  Serial reconnect attempt {attempt} → {port_name}")
+
+    reader = SerialReader(
+        serial_cfg,
+        on_fix=on_fix,
+        on_error=on_error,
+        on_reconnect=on_serial_reconnect,
+    )
 
     stop = threading.Event()
 
@@ -150,10 +178,16 @@ def run(
     if hasattr(signal, "SIGTERM"):
         signal.signal(signal.SIGTERM, _signal_handler)
 
-    click.echo(
-        f"gpsink  |  {serial_cfg.port} @ {serial_cfg.baudrate} → "
-        f"{db_cfg.host}:{db_cfg.port}/{db_cfg.dbname}"
-    )
+    if no_db:
+        click.echo(
+            f"gpsink  |  {serial_cfg.port} @ {serial_cfg.baudrate}  "
+            f"(no database — serial-only mode)"
+        )
+    else:
+        click.echo(
+            f"gpsink  |  {serial_cfg.port} @ {serial_cfg.baudrate} → "
+            f"{db_cfg.host}:{db_cfg.port}/{db_cfg.dbname}"
+        )
     click.echo("Press Ctrl+C to stop.\n")
 
     reader.start()
@@ -162,8 +196,9 @@ def run(
         stop.wait()
     finally:
         reader.stop()
-        writer.close()
-        click.echo(f"\nDone — wrote {fix_count} fixes.")
+        if writer is not None:
+            writer.close()
+        click.echo(f"\nDone — {'logged' if no_db else 'wrote'} {fix_count} fixes.")
 
 
 # ------------------------------------------------------------------

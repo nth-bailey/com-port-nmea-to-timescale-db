@@ -21,7 +21,7 @@ class GpsinkGUI:
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.title("gpsink — GPS → TimescaleDB")
-        self.root.geometry("720x620")
+        self.root.geometry("720x660")
         self.root.resizable(True, True)
         self.root.configure(bg="#1e1e2e")
 
@@ -64,6 +64,12 @@ class GpsinkGUI:
             background="#1e1e2e",
             foreground="#a6e3a1",
             font=("Segoe UI", 9),
+        )
+        style.configure(
+            "TCheckbutton",
+            background="#1e1e2e",
+            foreground="#cdd6f4",
+            font=("Segoe UI", 10),
         )
 
         self._build_ui()
@@ -118,45 +124,73 @@ class GpsinkGUI:
         db_frame = ttk.LabelFrame(self.root, text="  🗄️  TimescaleDB  ")
         db_frame.pack(fill="x", **pad)
 
+        # Enable / disable database toggle
+        db_toggle_row = ttk.Frame(db_frame)
+        db_toggle_row.pack(fill="x", **pad)
+
+        self.db_enabled_var = tk.BooleanVar(value=True)
+        self.db_check = ttk.Checkbutton(
+            db_toggle_row,
+            text="Enable database connection",
+            variable=self.db_enabled_var,
+            command=self._on_db_toggle,
+        )
+        self.db_check.pack(side="left")
+
+        ttk.Label(
+            db_toggle_row,
+            text="(uncheck to run serial-only / dry-run)",
+            foreground="#6c7086",
+            font=("Segoe UI", 8),
+        ).pack(side="left", padx=(8, 0))
+
         row2 = ttk.Frame(db_frame)
         row2.pack(fill="x", **pad)
 
         ttk.Label(row2, text="Host:").pack(side="left")
         self.db_host_var = tk.StringVar(value="localhost")
-        ttk.Entry(row2, textvariable=self.db_host_var, width=16).pack(
-            side="left", padx=4
-        )
+        self._db_host_entry = ttk.Entry(row2, textvariable=self.db_host_var, width=16)
+        self._db_host_entry.pack(side="left", padx=4)
 
         ttk.Label(row2, text="Port:").pack(side="left", padx=(12, 0))
         self.db_port_var = tk.StringVar(value="5432")
-        ttk.Entry(row2, textvariable=self.db_port_var, width=6).pack(
-            side="left", padx=4
-        )
+        self._db_port_entry = ttk.Entry(row2, textvariable=self.db_port_var, width=6)
+        self._db_port_entry.pack(side="left", padx=4)
 
         ttk.Label(row2, text="DB:").pack(side="left", padx=(12, 0))
         self.db_name_var = tk.StringVar(value="gpsink")
-        ttk.Entry(row2, textvariable=self.db_name_var, width=12).pack(
-            side="left", padx=4
-        )
+        self._db_name_entry = ttk.Entry(row2, textvariable=self.db_name_var, width=12)
+        self._db_name_entry.pack(side="left", padx=4)
 
         row3 = ttk.Frame(db_frame)
         row3.pack(fill="x", **pad)
 
         ttk.Label(row3, text="User:").pack(side="left")
         self.db_user_var = tk.StringVar(value="postgres")
-        ttk.Entry(row3, textvariable=self.db_user_var, width=12).pack(
-            side="left", padx=4
-        )
+        self._db_user_entry = ttk.Entry(row3, textvariable=self.db_user_var, width=12)
+        self._db_user_entry.pack(side="left", padx=4)
 
         ttk.Label(row3, text="Password:").pack(side="left", padx=(12, 0))
         self.db_pass_var = tk.StringVar(value="postgres")
-        ttk.Entry(row3, textvariable=self.db_pass_var, width=14, show="•").pack(
-            side="left", padx=4
+        self._db_pass_entry = ttk.Entry(
+            row3, textvariable=self.db_pass_var, width=14, show="•"
         )
+        self._db_pass_entry.pack(side="left", padx=4)
 
         ttk.Label(row3, text="Table:").pack(side="left", padx=(12, 0))
         self.table_var = tk.StringVar(value="gps_readings")
-        ttk.Entry(row3, textvariable=self.table_var, width=16).pack(side="left", padx=4)
+        self._db_table_entry = ttk.Entry(row3, textvariable=self.table_var, width=16)
+        self._db_table_entry.pack(side="left", padx=4)
+
+        # Store refs so we can enable/disable them
+        self._db_widgets = [
+            self._db_host_entry,
+            self._db_port_entry,
+            self._db_name_entry,
+            self._db_user_entry,
+            self._db_pass_entry,
+            self._db_table_entry,
+        ]
 
         # ---- Controls ----
         ctrl_frame = ttk.Frame(self.root)
@@ -214,6 +248,12 @@ class GpsinkGUI:
 
         self.root.after(0, _append)
 
+    def _on_db_toggle(self) -> None:
+        """Enable or disable the database entry widgets."""
+        state = "!disabled" if self.db_enabled_var.get() else "disabled"
+        for widget in self._db_widgets:
+            widget.state([state])
+
     def _on_start(self) -> None:
         serial_cfg = SerialConfig(
             port=self.port_var.get(),
@@ -222,30 +262,43 @@ class GpsinkGUI:
             parity=self.parity_var.get(),
             stopbits=float(self.stopbits_var.get()),
         )
-        db_cfg = DatabaseConfig(
-            host=self.db_host_var.get(),
-            port=int(self.db_port_var.get()),
-            dbname=self.db_name_var.get(),
-            user=self.db_user_var.get(),
-            password=self.db_pass_var.get(),
-            table_name=self.table_var.get(),
-        )
 
-        try:
-            self._writer = GPSWriter(db_cfg)
-            self._writer.connect()
-        except Exception as exc:
-            messagebox.showerror("Database Error", str(exc))
-            return
+        db_enabled = self.db_enabled_var.get()
+
+        if db_enabled:
+            db_cfg = DatabaseConfig(
+                host=self.db_host_var.get(),
+                port=int(self.db_port_var.get()),
+                dbname=self.db_name_var.get(),
+                user=self.db_user_var.get(),
+                password=self.db_pass_var.get(),
+                table_name=self.table_var.get(),
+            )
+
+            try:
+                self._writer = GPSWriter(
+                    db_cfg,
+                    on_reconnect=lambda attempt, info: self._log(
+                        f"  ⟳  DB reconnect attempt {attempt} → {info}"
+                    ),
+                )
+                self._writer.connect()
+            except Exception as exc:
+                messagebox.showerror("Database Error", str(exc))
+                return
+        else:
+            self._writer = None
 
         self._fix_count = 0
 
         def on_fix(fix: GPSFix) -> None:
-            if self._writer is None:
-                return
             self._fix_count += 1
             self.root.after(0, lambda: self.count_var.set(f"Fixes: {self._fix_count}"))
-            self._writer.write_fix(fix)
+            if self._writer is not None:
+                try:
+                    self._writer.write_fix(fix)
+                except Exception as db_exc:
+                    self._log(f"DB write error: {db_exc}")
             self._log(
                 f"[{fix.timestamp:%H:%M:%S}]  "
                 f"lat={fix.latitude:+.6f}  lon={fix.longitude:+.6f}  "
@@ -257,16 +310,35 @@ class GpsinkGUI:
             self._log(f"ERROR: {exc}")
             self.root.after(0, lambda: self.status_var.set("Error"))
 
-        self._reader = SerialReader(serial_cfg, on_fix=on_fix, on_error=on_error)
+        def on_serial_reconnect(attempt: int, port_name: str) -> None:
+            self._log(f"  ⟳  Serial reconnect attempt {attempt} → {port_name}")
+            self.root.after(
+                0, lambda: self.status_var.set(f"Reconnecting ({attempt})…")
+            )
+
+        self._reader = SerialReader(
+            serial_cfg,
+            on_fix=on_fix,
+            on_error=on_error,
+            on_reconnect=on_serial_reconnect,
+        )
         self._reader.start()
 
-        self.status_var.set(f"Streaming {serial_cfg.port}")
+        mode = "serial-only" if not db_enabled else "streaming"
+        self.status_var.set(f"{mode.title()} {serial_cfg.port}")
         self.start_btn.state(["disabled"])
         self.stop_btn.state(["!disabled"])
-        self._log(
-            f"Started — {serial_cfg.port} @ {serial_cfg.baudrate} → "
-            f"{db_cfg.host}:{db_cfg.port}/{db_cfg.dbname}"
-        )
+
+        if db_enabled:
+            self._log(
+                f"Started — {serial_cfg.port} @ {serial_cfg.baudrate} → "
+                f"{db_cfg.host}:{db_cfg.port}/{db_cfg.dbname}"
+            )
+        else:
+            self._log(
+                f"Started — {serial_cfg.port} @ {serial_cfg.baudrate}  "
+                f"(serial-only mode, no database)"
+            )
 
     def _on_stop(self) -> None:
         if self._reader:
@@ -277,7 +349,8 @@ class GpsinkGUI:
         self.status_var.set("Stopped")
         self.start_btn.state(["!disabled"])
         self.stop_btn.state(["disabled"])
-        self._log(f"Stopped — {self._fix_count} fixes written.")
+        db_label = "written" if self._writer is not None else "logged"
+        self._log(f"Stopped — {self._fix_count} fixes {db_label}.")
 
     def _on_close(self) -> None:
         self._on_stop()

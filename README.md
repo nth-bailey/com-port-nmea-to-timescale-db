@@ -9,8 +9,10 @@ Built for ≥1 Hz radio GPS data sources transmitting `$GPRMC` sentences.
 - **Serial / COM port reader** — configurable baud rate, parity, stop bits, flow control
 - **NMEA parser** — extracts lat/lon/speed/course from `$GPRMC` sentences via `pynmea2`
 - **TimescaleDB writer** — auto-provisions a hypertable with a PostGIS `geometry(Point, 4326)` column
+- **Optional database** — run in serial-only mode (`--no-db`) to verify COM port connectivity before involving the DB
+- **Auto-reconnect** — both serial port and database connections automatically retry with exponential backoff on transient failures (e.g. USB hiccup, network outage)
 - **CLI** — fully configurable via command-line flags
-- **GUI** — simple Tkinter interface for configuring and monitoring the stream
+- **GUI** — simple Tkinter interface with database on/off toggle for configuring and monitoring the stream
 
 ## Quick Start
 
@@ -20,6 +22,9 @@ uv sync --extra dev
 
 # Run the CLI
 uv run gpsink run --port COM3 --baud 9600 --db-host localhost --db-name gpsink
+
+# Run serial-only mode (no database — just verify COM port)
+uv run gpsink run --port COM3 --no-db
 
 # Launch the GUI
 uv run gpsink gui
@@ -51,7 +56,12 @@ gpsink provision          Create extensions, table, and hypertable
 | `--db-user`    | `postgres`  | Database user            |
 | `--db-password`| `postgres`  | Database password        |
 | `--table`      | `gps_readings` | Target table name     |
+| `--no-db`      | off         | Skip database — serial-only / dry-run mode |
 | `-v`           | off         | Enable debug logging     |
+
+### Auto-Reconnect
+
+Both the serial port reader and the database writer will automatically attempt to reconnect when the connection is lost (e.g. USB cable briefly unplugged, network outage). Reconnection uses **exponential backoff** (1s → 2s → 4s → … up to 30s), with up to 10 retries by default. Reconnection events are logged to the console/GUI live feed.
 
 ## GUI Reference
 
