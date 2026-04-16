@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import signal
 import threading
+import uuid
 
 import click
 
@@ -90,10 +91,16 @@ def main() -> None:
     help="Run without connecting to TimescaleDB (serial-only / dry-run mode).",
 )
 @click.option(
-    "--source-id",
+    "--source-label",
     default="default",
     show_default=True,
     help="Label for this GPS source / entity (e.g. 'truck-1').",
+)
+@click.option(
+    "--source-uuid",
+    default=None,
+    type=click.UUID,
+    help="Optional UUID for the GPS source.",
 )
 @click.option("-v", "--verbose", is_flag=True, help="Enable debug logging.")
 def run(
@@ -109,7 +116,8 @@ def run(
     db_password: str,
     table: str,
     no_db: bool,
-    source_id: str,
+    source_label: str,
+    source_uuid: uuid.UUID | None,
     verbose: bool,
 ) -> None:
     """Start reading NMEA data and writing to TimescaleDB.
@@ -140,7 +148,8 @@ def run(
         )
         writer = GPSWriter(
             db_cfg,
-            source_id=source_id,
+            source_label=source_label,
+            source_uuid=str(source_uuid) if source_uuid else None,
             on_reconnect=lambda attempt, info: click.echo(
                 f"  ⟳  DB reconnect attempt {attempt} → {info}"
             ),

@@ -56,7 +56,8 @@ gpsink provision          Create extensions, table, and hypertable
 | `--db-user`    | `postgres`  | Database user            |
 | `--db-password`| `postgres`  | Database password        |
 | `--table`      | `gps_readings` | Target table name     |
-| `--source-id`  | `default`   | Label for this GPS source / entity (e.g. `truck-1`) |
+| `--source-label`| `default`   | Label for this GPS source (e.g. `truck-1`) |
+| `--source-uuid`|             | Optional UUID for this GPS source          |
 | `--no-db`      | off         | Skip database — serial-only / dry-run mode |
 | `-v`           | off         | Enable debug logging     |
 
@@ -73,7 +74,8 @@ Both the serial port reader and the database writer will automatically attempt t
 ```sql
 CREATE TABLE gps_readings (
     time         TIMESTAMPTZ      NOT NULL,  -- UTC timestamp of the fix
-    source_id    TEXT             NOT NULL,  -- User-defined entity / track label
+    source_uuid  UUID,                       -- Actual UUID for the source
+    source_label TEXT             NOT NULL,  -- User-defined entity / track label
     geom         GEOMETRY(Point, 4326),      -- WGS 84 point (lon, lat) in decimal degrees
     latitude     DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = North, negative = South
     longitude    DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = East, negative = West
@@ -88,7 +90,7 @@ CREATE TABLE gps_readings (
 
 > **NMEA → DB conversion:** Raw RMC and GGA sentences encode position as `DDDMM.MMMM` with `N`/`S`/`E`/`W` indicators. The parser ([pynmea2](https://github.com/Knio/pynmea2)) converts these to **signed decimal degrees** before insertion (e.g. `48.1173`, with South/West as negative). The `geom` column stores the same coordinates as a PostGIS `Point(longitude, latitude)` in SRID 4326 (WGS 84).
 
-> **Multi-entity tracking:** Use `--source-id` (CLI) or the Source ID field (GUI) to label each GPS stream. Run multiple gpsink instances against the same table with different source IDs to track separate vehicles, drones, etc. Query by `WHERE source_id = 'truck-1'`.
+> **Multi-entity tracking:** Use `--source-label` (CLI) or the Source Label field (GUI) to label each GPS stream. Run multiple gpsink instances against the same table with different source labels to track separate vehicles, drones, etc. Query by `WHERE source_label = 'truck-1'`. Additional tracking can use the `source_uuid` field for hardcoded actual UUIDs.
 
 ## Development
 

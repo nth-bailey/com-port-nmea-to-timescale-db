@@ -28,7 +28,8 @@ _CREATE_EXTENSION_TIMESCALE = "CREATE EXTENSION IF NOT EXISTS timescaledb;"
 _CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
     time         TIMESTAMPTZ      NOT NULL,  -- UTC timestamp of the fix
-    source_id    TEXT             NOT NULL,  -- User-defined entity / track label
+    source_uuid  UUID,                       -- Actual UUID for the source
+    source_label TEXT             NOT NULL,  -- User-defined entity / track label
     geom         GEOMETRY(Point, 4326),      -- WGS 84 point (lon, lat) in decimal degrees
     latitude     DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = North, negative = South
     longitude    DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = East, negative = West
@@ -45,8 +46,8 @@ SELECT create_hypertable('{table}', 'time', if_not_exists => TRUE);
 """
 
 _INSERT_FIX = """
-INSERT INTO {table} (time, source_id, geom, latitude, longitude, altitude, speed_knots, course, status, raw_sentence)
-VALUES (%s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s, %s, %s, %s, %s, %s);
+INSERT INTO {table} (time, source_uuid, source_label, geom, latitude, longitude, altitude, speed_knots, course, status, raw_sentence)
+VALUES (%s, %s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s, %s, %s, %s, %s, %s);
 """
 
 # Default reconnection settings
@@ -73,9 +74,11 @@ class GPSWriter:
     ----------
     config : DatabaseConfig
         Connection settings.
-    source_id : str
+    source_label : str
         Label for this GPS source / entity (e.g. ``'truck-1'``).
         Stored in every row so multiple streams can share one table.
+    source_uuid : str | None
+        Optional UUID for the GPS source.
     auto_provision : bool
         If *True*, call :meth:`provision` automatically on the first write.
     max_retries : int
@@ -93,7 +96,8 @@ class GPSWriter:
         self,
         config: DatabaseConfig,
         *,
-        source_id: str = "default",
+        source_label: str = "default",
+        source_uuid: str | None = None,
         auto_provision: bool = True,
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base_delay: float = DEFAULT_RETRY_BASE_DELAY,
@@ -101,7 +105,8 @@ class GPSWriter:
         on_reconnect: Optional[Callable[[int, str], None]] = None,
     ) -> None:
         self.config = config
-        self.source_id = source_id
+        self.source_label = source_label
+        self.source_uuid = source_uuid
         self._conn: Optional[psycopg2.extensions.connection] = None
         self._lock = threading.Lock()
         self._provisioned = False
@@ -242,7 +247,8 @@ class GPSWriter:
         table = self.config.table_name
         params = (
             fix.timestamp,
-            self.source_id,
+            self.source_uuid,
+            self.source_label,
             fix.longitude,  # ST_MakePoint(x, y) = (lon, lat)
             fix.latitude,
             fix.latitude,
@@ -277,7 +283,8 @@ class GPSWriter:
         rows = [
             (
                 f.timestamp,
-                self.source_id,
+                self.source_uuid,
+                self.source_label,
                 f.longitude,
                 f.latitude,
                 f.latitude,
