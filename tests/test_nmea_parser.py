@@ -6,14 +6,22 @@ from datetime import datetime, timezone
 
 import pytest
 
-from gpsink.nmea_parser import GPSFix, parse_rmc, parse_gprmc, parse_nmea_stream
+from gpsink.nmea_parser import (
+    GPSFix,
+    parse_rmc,
+    parse_gprmc,
+    parse_gga,
+    parse_nmea_stream,
+)
 
 # Sample NMEA sentences (duplicated from conftest for direct import)
 VALID_GPRMC = "$GPRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*44"
 VOID_GPRMC = "$GPRMC,123519.00,V,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*53"
 VALID_GNRMC = "$GNRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*5A"
 VOID_GNRMC = "$GNRMC,123519.00,V,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*4D"
-GPGGA_SENTENCE = "$GPGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*61"
+VALID_GPGGA = "$GPGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*61"
+VOID_GPGGA = "$GPGGA,123519.00,4807.038,N,01131.000,E,0,08,0.9,545.4,M,47.0,M,,*60"
+GSV_SENTENCE = "$GPGSV,3,1,11,03,03,111,00,04,15,270,00,06,01,010,00,13,06,292,00*74"
 GARBAGE = "!!!NOT_NMEA!!!"
 
 
@@ -87,7 +95,7 @@ class TestParseRmc:
         assert fix.is_valid is False
 
     def test_non_rmc_returns_none(self):
-        assert parse_rmc(GPGGA_SENTENCE) is None
+        assert parse_rmc(VALID_GPGGA) is None
 
     def test_garbage_returns_none(self):
         assert parse_rmc(GARBAGE) is None
@@ -108,6 +116,43 @@ class TestParseRmc:
         fix = parse_gprmc(VALID_GPRMC)
         assert fix is not None
         assert isinstance(fix, GPSFix)
+
+
+# ------------------------------------------------------------------
+# parse_gga
+# ------------------------------------------------------------------
+
+
+class TestParseGga:
+    """Unit tests for the single-sentence GGA parser."""
+
+    def test_valid_gpgga_returns_fix(self):
+        fix = parse_gga(VALID_GPGGA)
+        assert fix is not None
+        assert isinstance(fix, GPSFix)
+
+    def test_valid_fix_altitude(self):
+        fix = parse_gga(VALID_GPGGA)
+        assert fix is not None
+        assert fix.altitude == pytest.approx(545.4)
+
+    def test_valid_fix_status_is_active(self):
+        fix = parse_gga(VALID_GPGGA)
+        assert fix is not None
+        assert fix.status == "A"
+        assert fix.is_valid is True
+
+    def test_void_fix_status(self):
+        fix = parse_gga(VOID_GPGGA)
+        assert fix is not None
+        assert fix.status == "V"
+        assert fix.is_valid is False
+
+    def test_non_gga_returns_none(self):
+        assert parse_gga(VALID_GPRMC) is None
+
+    def test_garbage_returns_none(self):
+        assert parse_gga(GARBAGE) is None
 
 
 # ------------------------------------------------------------------
@@ -134,14 +179,14 @@ class TestParseNmeaStream:
     """Tests for batch parsing multiple lines."""
 
     def test_filters_only_rmc(self):
-        lines = [VALID_GPRMC, GPGGA_SENTENCE, VOID_GPRMC, GARBAGE]
+        lines = [VALID_GPRMC, GSV_SENTENCE, VOID_GPRMC, GARBAGE]
         fixes = parse_nmea_stream(lines)
         assert len(fixes) == 2  # valid + void
 
     def test_filters_mixed_talkers(self):
-        lines = [VALID_GPRMC, VALID_GNRMC, GPGGA_SENTENCE]
+        lines = [VALID_GPRMC, VALID_GNRMC, VALID_GPGGA, GSV_SENTENCE]
         fixes = parse_nmea_stream(lines)
-        assert len(fixes) == 2  # both RMC sentences kept
+        assert len(fixes) == 3  # RMC and GGA sentences kept
 
     def test_empty_list(self):
         assert parse_nmea_stream([]) == []

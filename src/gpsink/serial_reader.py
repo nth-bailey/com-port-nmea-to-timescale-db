@@ -10,7 +10,7 @@ from typing import Callable, Optional
 import serial
 
 from gpsink.config import SerialConfig
-from gpsink.nmea_parser import GPSFix, parse_rmc
+from gpsink.nmea_parser import GPSFix, parse_nmea
 
 log = logging.getLogger(__name__)
 
@@ -205,7 +205,7 @@ class SerialReader:
                 if not line:
                     continue
 
-                fix = parse_rmc(line)
+                fix = parse_nmea(line)
                 if fix is not None:
                     try:
                         self.on_fix(fix)

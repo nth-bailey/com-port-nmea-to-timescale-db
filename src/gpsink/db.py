@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS {table} (
     geom         GEOMETRY(Point, 4326),      -- WGS 84 point (lon, lat) in decimal degrees
     latitude     DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = North, negative = South
     longitude    DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = East, negative = West
+    altitude     DOUBLE PRECISION,           -- Metres above mean sea level (from GGA)
     speed_knots  DOUBLE PRECISION,           -- Speed over ground in knots (1 kt = 1.852 km/h)
     course       DOUBLE PRECISION,           -- Track angle in degrees true (0–360°)
     status       CHAR(1),                    -- 'A' = active/valid fix, 'V' = void/invalid
@@ -44,8 +45,8 @@ SELECT create_hypertable('{table}', 'time', if_not_exists => TRUE);
 """
 
 _INSERT_FIX = """
-INSERT INTO {table} (time, source_id, geom, latitude, longitude, speed_knots, course, status, raw_sentence)
-VALUES (%s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s, %s, %s, %s, %s);
+INSERT INTO {table} (time, source_id, geom, latitude, longitude, altitude, speed_knots, course, status, raw_sentence)
+VALUES (%s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s, %s, %s, %s, %s, %s);
 """
 
 # Default reconnection settings
@@ -246,6 +247,7 @@ class GPSWriter:
             fix.latitude,
             fix.latitude,
             fix.longitude,
+            fix.altitude,
             fix.speed_knots,
             fix.course,
             fix.status,
@@ -280,6 +282,7 @@ class GPSWriter:
                 f.latitude,
                 f.latitude,
                 f.longitude,
+                f.altitude,
                 f.speed_knots,
                 f.course,
                 f.status,

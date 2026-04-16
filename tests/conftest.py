@@ -8,7 +8,7 @@ from gpsink.config import AppConfig, DatabaseConfig, SerialConfig
 from gpsink.nmea_parser import GPSFix
 
 # ---------------------------------------------------------------------------
-# Example NMEA sentences  (RMC — any talker ID)
+# Example NMEA sentences  (RMC and GGA — any talker ID)
 # ---------------------------------------------------------------------------
 
 # GP talker — valid fix (status = A)
@@ -23,8 +23,17 @@ VALID_GNRMC = "$GNRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.
 # GN talker — void fix (status = V)
 VOID_GNRMC = "$GNRMC,123519.00,V,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*4D"
 
-# Non-RMC sentence (GPGGA)
-GPGGA_SENTENCE = "$GPGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*61"
+# GP talker — valid GGA (quality = 1, has altitude)
+VALID_GPGGA = "$GPGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*61"
+
+# GN talker — valid GGA (quality = 1, has altitude)
+VALID_GNGGA = "$GNGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*7F"
+
+# GP talker — void GGA (quality = 0, no valid fix)
+VOID_GPGGA = "$GPGGA,123519.00,4807.038,N,01131.000,E,0,08,0.9,545.4,M,47.0,M,,*60"
+
+# Non-RMC / non-GGA sentence (GSV)
+GSV_SENTENCE = "$GPGSV,3,1,11,03,03,111,00,04,15,270,00,06,01,010,00,13,06,292,00*74"
 
 # Garbage / malformed
 GARBAGE = "!!!NOT_NMEA!!!"

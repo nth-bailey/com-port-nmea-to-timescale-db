@@ -2,12 +2,12 @@
 
 Stream NMEA GPS data from a COM port radio dongle into [TimescaleDB](https://www.timescale.com/) with [PostGIS](https://postgis.net/).
 
-Built for ≥1 Hz radio GPS data sources transmitting RMC sentences (`$GNRMC`, `$GPRMC`, `$GLRMC`, …).
+Built for ≥1 Hz radio GPS data sources transmitting RMC or GGA sentences (`$GNRMC`, `$GPGGA`, `$GLRMC`, …).
 
 ## Features
 
 - **Serial / COM port reader** — configurable baud rate, parity, stop bits, flow control
-- **NMEA parser** — extracts lat/lon/speed/course from any `$xxRMC` sentence (e.g. `$GNRMC`) via `pynmea2`
+- **NMEA parser** — extracts lat/lon/speed/course/altitude from any `$xxRMC` or `$xxGGA` sentence via `pynmea2`. Missing fields (e.g. speed in GGA) evaluate to `NULL`.
 - **TimescaleDB writer** — auto-provisions a hypertable with a PostGIS `geometry(Point, 4326)` column
 - **Optional database** — run in serial-only mode (`--no-db`) to verify COM port connectivity before involving the DB
 - **Auto-reconnect** — both serial port and database connections automatically retry with exponential backoff on transient failures (e.g. USB hiccup, network outage)
@@ -77,6 +77,7 @@ CREATE TABLE gps_readings (
     geom         GEOMETRY(Point, 4326),      -- WGS 84 point (lon, lat) in decimal degrees
     latitude     DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = North, negative = South
     longitude    DOUBLE PRECISION NOT NULL,  -- Decimal degrees; positive = East, negative = West
+    altitude     DOUBLE PRECISION,           -- Metres above mean sea level (from GGA)
     speed_knots  DOUBLE PRECISION,           -- Speed over ground in knots (1 kt ≈ 1.852 km/h)
     course       DOUBLE PRECISION,           -- Track angle in degrees true (0–360°)
     status       CHAR(1),                    -- 'A' = active/valid fix, 'V' = void/invalid
@@ -85,7 +86,7 @@ CREATE TABLE gps_readings (
 -- Automatically converted to a TimescaleDB hypertable
 ```
 
-> **NMEA → DB conversion:** Raw RMC sentences encode position as `DDDMM.MMMM` with `N`/`S`/`E`/`W` indicators (e.g. `4807.038,N` = 48°07.038′ N). The parser ([pynmea2](https://github.com/Knio/pynmea2)) converts these to **signed decimal degrees** before insertion (e.g. `48.1173`, with South/West as negative). The `geom` column stores the same coordinates as a PostGIS `Point(longitude, latitude)` in SRID 4326 (WGS 84).
+> **NMEA → DB conversion:** Raw RMC and GGA sentences encode position as `DDDMM.MMMM` with `N`/`S`/`E`/`W` indicators. The parser ([pynmea2](https://github.com/Knio/pynmea2)) converts these to **signed decimal degrees** before insertion (e.g. `48.1173`, with South/West as negative). The `geom` column stores the same coordinates as a PostGIS `Point(longitude, latitude)` in SRID 4326 (WGS 84).
 
 > **Multi-entity tracking:** Use `--source-id` (CLI) or the Source ID field (GUI) to label each GPS stream. Run multiple gpsink instances against the same table with different source IDs to track separate vehicles, drones, etc. Query by `WHERE source_id = 'truck-1'`.
 

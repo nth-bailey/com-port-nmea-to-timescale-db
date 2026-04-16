@@ -13,7 +13,8 @@ from gpsink.serial_reader import SerialReader
 # Sample sentences
 VALID_GPRMC = "$GPRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*44"
 VALID_GNRMC = "$GNRMC,123519.00,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*5A"
-GPGGA_SENTENCE = "$GPGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*61"
+VALID_GPGGA = "$GPGGA,123519.00,4807.038,N,01131.000,E,1,08,0.9,545.4,M,47.0,M,,*61"
+GSV_SENTENCE = "$GPGSV,3,1,11,03,03,111,00,04,15,270,00,06,01,010,00,13,06,292,00*74"
 
 
 class TestSerialReader:
@@ -72,8 +73,8 @@ class TestSerialReader:
         assert received[0].latitude == pytest.approx(48.1173, abs=0.01)
 
     @patch("gpsink.serial_reader.serial.Serial")
-    def test_reader_ignores_non_rmc(self, mock_serial_cls, config):
-        raw = (GPGGA_SENTENCE + "\r\n").encode("ascii")
+    def test_reader_ignores_unsupported(self, mock_serial_cls, config):
+        raw = (GSV_SENTENCE + "\r\n").encode("ascii")
         mock_port = self._make_mock_serial([raw])
         mock_serial_cls.return_value = mock_port
 

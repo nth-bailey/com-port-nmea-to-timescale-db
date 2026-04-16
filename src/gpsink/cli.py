@@ -156,10 +156,16 @@ def run(
             writer.write_fix(fix)
         with count_lock:
             fix_count += 1
+        spd_str = (
+            f"spd={fix.speed_knots:.1f}kn"
+            if fix.speed_knots is not None
+            else "spd=N/A "
+        )
+        alt_str = f"  alt={fix.altitude:.1f}m" if fix.altitude is not None else ""
         click.echo(
             f"[{fix.timestamp:%H:%M:%S}]  "
             f"lat={fix.latitude:+.6f}  lon={fix.longitude:+.6f}  "
-            f"spd={fix.speed_knots:.1f}kn  "
+            f"{spd_str}{alt_str}  "
             f"{'✓' if fix.is_valid else '✗'}"
         )
 
